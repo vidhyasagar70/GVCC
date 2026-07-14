@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { isAxiosError } from 'axios';
 import api from '../lib/api';
 import toast from 'react-hot-toast';
 import type {
@@ -7,6 +8,14 @@ import type {
   UpdateBookmarkPayload,
   UseBookmarksReturn,
 } from '../types';
+
+function extractMessage(err: unknown, fallback: string): string {
+  if (isAxiosError(err)) {
+    const serverMsg = (err.response?.data as { message?: string } | undefined)?.message;
+    return serverMsg ?? err.message;
+  }
+  return fallback;
+}
 
 export function useBookmarks(videoId: string): UseBookmarksReturn {
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
@@ -22,10 +31,7 @@ export function useBookmarks(videoId: string): UseBookmarksReturn {
       const { data } = await api.get<Bookmark[]>(`/api/bookmarks/${videoId}`);
       setBookmarks(data);
     } catch (err: unknown) {
-      const msg = axios.isAxiosError(err)
-        ? err.response?.data?.message ?? err.message
-        : 'Failed to load bookmarks';
-      setError(msg);
+      setError(extractMessage(err, 'Failed to load bookmarks'));
     } finally {
       setLoading(false);
     }
@@ -37,7 +43,6 @@ export function useBookmarks(videoId: string): UseBookmarksReturn {
 
   // ── Add (optimistic) ─────────────────────────────────────────────────────────
   const addBookmark = useCallback(async (payload: CreateBookmarkPayload): Promise<void> => {
-    // Optimistic placeholder
     const tempId = `temp-${Date.now()}`;
     const optimistic: Bookmark = {
       _id:       tempId,
@@ -51,17 +56,13 @@ export function useBookmarks(videoId: string): UseBookmarksReturn {
 
     try {
       const { data } = await api.post<Bookmark>('/api/bookmarks', payload);
-      // Replace the optimistic entry with the real one from the server
       setBookmarks(prev =>
         prev.map(bm => (bm._id === tempId ? data : bm)).sort((a, b) => a.timestamp - b.timestamp),
       );
       toast.success('Bookmark saved!');
     } catch (err: unknown) {
-      // Roll back
       setBookmarks(prev => prev.filter(bm => bm._id !== tempId));
-      const msg = axios.isAxiosError(err)
-        ? err.response?.data?.message ?? err.message
-        : 'Failed to save bookmark';
+      const msg = extractMessage(err, 'Failed to save bookmark');
       toast.error(msg);
       throw new Error(msg);
     }
@@ -71,22 +72,16 @@ export function useBookmarks(videoId: string): UseBookmarksReturn {
   const updateBookmark = useCallback(
     async (id: string, payload: UpdateBookmarkPayload): Promise<void> => {
       const previous = bookmarks.find(b => b._id === id);
-      // Optimistic update
-      setBookmarks(prev =>
-        prev.map(bm => (bm._id === id ? { ...bm, ...payload } : bm)),
-      );
+      setBookmarks(prev => prev.map(bm => (bm._id === id ? { ...bm, ...payload } : bm)));
       try {
         const { data } = await api.put<Bookmark>(`/api/bookmarks/${id}`, payload);
         setBookmarks(prev => prev.map(bm => (bm._id === id ? data : bm)));
         toast.success('Bookmark updated!');
       } catch (err: unknown) {
-        // Roll back
         if (previous) {
           setBookmarks(prev => prev.map(bm => (bm._id === id ? previous : bm)));
         }
-        const msg = axios.isAxiosError(err)
-          ? err.response?.data?.message ?? err.message
-          : 'Failed to update bookmark';
+        const msg = extractMessage(err, 'Failed to update bookmark');
         toast.error(msg);
         throw new Error(msg);
       }
@@ -103,15 +98,12 @@ export function useBookmarks(videoId: string): UseBookmarksReturn {
       await api.delete(`/api/bookmarks/${id}`);
       toast.success('Bookmark removed');
     } catch (err: unknown) {
-      // Roll back
       if (previous) {
         setBookmarks(prev =>
           [...prev, previous].sort((a, b) => a.timestamp - b.timestamp),
         );
       }
-      const msg = axios.isAxiosError(err)
-        ? err.response?.data?.message ?? err.message
-        : 'Failed to delete bookmark';
+      const msg = extractMessage(err, 'Failed to delete bookmark');
       toast.error(msg);
       throw new Error(msg);
     }
