@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
-import axios from 'axios';
+import api from './lib/api';
 import {
   PlayCircle, BookMarked, Info, ChevronRight,
   Clock, GraduationCap, Search, Menu, X,
@@ -44,7 +44,7 @@ export default function App() {
       setLoadingVids(true);
       setVidsError(null);
       try {
-        const { data } = await axios.get<Video[]>('/api/videos');
+        const { data } = await api.get<Video[]>('/api/videos');
         setVideos(data);
         if (data.length > 0) setSelected(data[0]);
       } catch {
