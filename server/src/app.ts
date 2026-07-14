@@ -18,7 +18,10 @@ const PORT = Number(process.env.PORT) || 5000;
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 app.use(
   cors({
-    origin:      ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'],
+    origin: (origin, callback) => {
+      // Automatically allow requests from localhost or any deployed frontend
+      callback(null, true);
+    },
     credentials: true,
     methods:     ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   }),
