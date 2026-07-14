@@ -1,9 +1,17 @@
 import axios from 'axios';
 
-// In development, VITE_API_URL is empty → Vite proxy handles /api and /videos
-// In production, VITE_API_URL = 'https://your-api.onrender.com'
+// Fail-safe automatic backend resolution
+let baseURL = import.meta.env.VITE_API_URL ?? '';
+
+if (!baseURL && typeof window !== 'undefined') {
+  if (window.location.hostname.includes('vercel.app')) {
+    baseURL = 'https://gvcc-3ivq.onrender.com';
+  }
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? '',
+  baseURL,
 });
 
+export { baseURL };
 export default api;

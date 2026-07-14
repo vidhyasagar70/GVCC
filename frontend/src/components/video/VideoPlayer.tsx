@@ -3,6 +3,7 @@ import {
   Play, Pause, Volume2, VolumeX,
   Maximize, Minimize, SkipBack, SkipForward, Settings,
 } from 'lucide-react';
+import { baseURL } from '../../lib/api';
 import type { VideoPlayerProps } from '../../types';
 
 function formatTime(seconds: number): string {
@@ -120,8 +121,8 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({ video, onTimeUpdate, v
       {/* Video element */}
       <video
         ref={videoRef}
-        src={video.videoUrl}
-        poster={video.thumbnailUrl}
+        src={video.videoUrl.startsWith('http') ? video.videoUrl : `${baseURL}${video.videoUrl}`}
+        poster={video.thumbnailUrl?.startsWith('http') ? video.thumbnailUrl : (video.thumbnailUrl ? `${baseURL}${video.thumbnailUrl}` : undefined)}
         className="w-full h-full object-contain"
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
